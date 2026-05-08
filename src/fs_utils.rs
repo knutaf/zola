@@ -36,6 +36,8 @@ pub type MeaningfulEvent = (PathBuf, PathBuf, SimpleFileSystemEventKind);
 /// return our internal simplified representation. For events we don't care about,
 /// return `None`.
 fn get_relevant_event_kind(event_kind: &EventKind) -> Option<SimpleFileSystemEventKind> {
+    // Prefer having match arms for all specific event types, so that on a notify crate upgrade, we're forced to
+    // evaluate any changes and decide what corresponding mapping changes should happen.
     match event_kind {
         // Nova on macOS reports this as its final event on change
         EventKind::Modify(ModifyKind::Name(RenameMode::Any)) => {
@@ -57,7 +59,14 @@ fn get_relevant_event_kind(event_kind: &EventKind) -> Option<SimpleFileSystemEve
         EventKind::Remove(RemoveKind::Any | RemoveKind::File | RemoveKind::Folder | RemoveKind::Other) => {
             Some(SimpleFileSystemEventKind::Remove)
         }
-        EventKind::Any | EventKind::Access(_) | EventKind::Modify(ModifyKind::Name(RenameMode::From | RenameMode::Both | RenameMode::Other) | ModifyKind::Metadata(MetadataKind::Any | MetadataKind::AccessTime | MetadataKind::Extended | MetadataKind::Other) | ModifyKind::Other) | EventKind::Other => None,
+        EventKind::Any |
+        // `Access` events according to docs are non-mutating, so it's safe to catch-all ignore them.
+        EventKind::Access(_) |
+        EventKind::Modify(
+            ModifyKind::Name(RenameMode::From | RenameMode::Both | RenameMode::Other) |
+            ModifyKind::Metadata(MetadataKind::Any | MetadataKind::AccessTime | MetadataKind::Extended | MetadataKind::Other) |
+            ModifyKind::Other) |
+        EventKind::Other => None,
     }
 }
 
