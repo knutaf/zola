@@ -37,26 +37,27 @@ pub type MeaningfulEvent = (PathBuf, PathBuf, SimpleFileSystemEventKind);
 /// return `None`.
 fn get_relevant_event_kind(event_kind: &EventKind) -> Option<SimpleFileSystemEventKind> {
     match event_kind {
-        // Nova on macOS reports this as it's final event on change
+        // Nova on macOS reports this as its final event on change
         EventKind::Modify(ModifyKind::Name(RenameMode::Any)) => {
             Some(SimpleFileSystemEventKind::Modify)
         }
-        EventKind::Create(CreateKind::File) | EventKind::Create(CreateKind::Folder) => {
+        // Windows only reports `Any`. Some filesystems also report `Other` in some situations.
+        EventKind::Create(CreateKind::Any | CreateKind::File | CreateKind::Folder | CreateKind::Other) => {
             Some(SimpleFileSystemEventKind::Create)
         }
-        EventKind::Modify(ModifyKind::Data(_))
-        // Windows 10 only reports modify events at the `Any` granularity.
+        EventKind::Modify(ModifyKind::Data(DataChange::Any | DataChange::Size | DataChange::Content | DataChange::Other))
+        // Windows only reports modify events at the `Any` granularity.
         | EventKind::Modify(ModifyKind::Any)
         // Intellij modifies file metadata on edit.
         // https://github.com/passcod/notify/issues/150#issuecomment-494912080
-        | EventKind::Modify(ModifyKind::Metadata(MetadataKind::WriteTime))
-        | EventKind::Modify(ModifyKind::Metadata(MetadataKind::Permissions))
-        | EventKind::Modify(ModifyKind::Metadata(MetadataKind::Ownership))
+        | EventKind::Modify(ModifyKind::Metadata(MetadataKind::WriteTime | MetadataKind::Permissions | MetadataKind::Ownership))
         | EventKind::Modify(ModifyKind::Name(RenameMode::To)) => Some(SimpleFileSystemEventKind::Modify),
-        EventKind::Remove(RemoveKind::File) | EventKind::Remove(RemoveKind::Folder) => {
+        // Windows only reports remove events at the `Any` granularity.
+        // `Other` sometimes represents unmount events in some filesystems.
+        EventKind::Remove(RemoveKind::Any | RemoveKind::File | RemoveKind::Folder | RemoveKind::Other) => {
             Some(SimpleFileSystemEventKind::Remove)
         }
-        _ => None,
+        EventKind::Any | EventKind::Access(_) | EventKind::Modify(ModifyKind::Name(RenameMode::From | RenameMode::Both | RenameMode::Other) | ModifyKind::Metadata(MetadataKind::Any | MetadataKind::AccessTime | MetadataKind::Extended | MetadataKind::Other) | ModifyKind::Other) | EventKind::Other => None,
     }
 }
 
