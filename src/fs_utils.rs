@@ -113,7 +113,7 @@ pub fn filter_events(
         }
 
         if is_ignored_file(ignored_content_globset, &path) {
-            log::debug!(target: "file_change", "skipping file change event because it is ignored: by content globset {:?}", ignored_content_globset);
+            log::debug!(target: "file_change", "skipping file change event because it is ignored by content globset {:?}", ignored_content_globset);
             continue;
         }
 
